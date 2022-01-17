@@ -1,0 +1,144 @@
+﻿@{
+    ViewBag.Title = "Home Page";
+}
+
+<div class="jumbotron">
+    <h2>Easypay Payment</h2>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js" integrity="sha512-qTXRIMyZIFb8iQcfjXWCO8+M5Tbc38Qi5WzdPOYZHIlZpzBHG3L3by84BBBOiRGiEb7KKtAOAs5qYdUiZiQNNQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <div class="mb-10">
+        <label>Store ID:</label>
+        <input type="text" name="storeId" class="form-control" id="storeId" value="" placeholder="10008" />
+    </div>
+    <div class="mb-10">
+        <label>Amount:</label>
+        <input type="text" name="amount" class="form-control" id="amount" value="" placeholder="10.0" />
+    </div>
+    <div class="mb-10">
+        <label>Order ID:</label>
+        <input type="text" name="orderId" class="form-control" id="orderId" value="" placeholder="123456" />
+    </div>
+    <div class="mb-10">
+        <label>Token:</label>
+        <input type="text" name="token" class="form-control" id="token" value="" />
+    </div>
+    <div class="mb-10">
+        <label>Payment Method:</label>
+        <input type="text" name="merchantPaymentMethod" class="form-control" id="merchantPaymentMethod" value="" />
+    </div>
+    <div class="mb-10">
+        <label>Postback URL:</label>
+        <input type="text" name="postBackURL" class="form-control" id="postBackURL" value="" placeholder="https://mywebsite.site/" />
+    </div>
+    <div class="mb-10">
+        <label>Auto-generated Request Hash:</label>
+        <input type="text" class="form-control" id="generated-hash" placeholder="Hash (auto-generated)" readonly>
+    </div>
+    <div class="mb-10">
+        <label>Merchant Hash:</label>
+        <input type="text" class="form-control" id="merchant_hash" placeholder="LXXXXXXXXXXXXX5S" value="">
+    </div>
+    <br />
+    <button type="submit" name="pay" class="btn btn-primary mb-10" id="submitPaymentMethod" onClick="loadIframe();">Continue to Easypay Portal</button>
+
+    <script type="text/javascript">
+        function getValues() {
+
+        }
+
+        function loadIframe() {
+            var EasypaisaUrl = "https://easypaystg.easypaisa.com.pk/tpg/"; // This is Development Env url! replace with production url.
+            var storeID = document.getElementById("storeId").value;
+            var amount = document.getElementById("amount").value;
+            var orderID = document.getElementById("orderId").value;
+            var token = document.getElementById("token").value;
+            var postBackURL = document.getElementById("postBackURL").value;
+            var merchantPaymentMethod = document.getElementById("merchantPaymentMethod").value;
+
+            var params = {
+                storeId: storeID,
+                orderId: orderID,
+                transactionAmount: amount,
+                mobileAccountNo: '',
+                emailAddress: '',
+                transactionType: "InitialRequest",
+                tokenExpiry: token,
+                bankIdentificationNumber: '',
+                encryptedHashRequest: '',
+                merchantPaymentMethod: merchantPaymentMethod,
+                postBackURL: postBackURL,
+                signature: ''
+            };
+
+
+            if (params.storeId != "" && params.orderId != "") {
+
+                let hash = generateHash(params);
+
+                params.encryptedHashRequest = hash;
+
+                var str = jQuery.param(params);
+
+                //console.log({ str });
+
+                window.location.href = EasypaisaUrl + '?' + str;
+            }
+
+        }
+
+        function generateHash(params) {
+
+            //var date = "2021-12-29";
+            //var time = "12:59";
+
+            var paramsToHash = {
+                amount: params.transactionAmount,
+                //expiryDate: params.tokenExpiry,
+                //merchantPaymentMethod: params.merchantPaymentMethod,
+                orderRefNum: params.orderId,
+                paymentMethod: params.transactionType,
+                postBackURL: params.postBackURL,
+                storeId: params.storeId,
+                timeStamp: moment().format('YYYY-MM-DDTHH:mm:ss') //moment(date + ' ' + time).format('YYYY-MM-DDTHH:mm:ss')
+            };
+
+            var query_string = `amount=${paramsToHash.amount}&orderRefNum=${paramsToHash.orderRefNum}&paymentMethod=${paramsToHash.paymentMethod}&postBackURL=${paramsToHash.postBackURL}&storeId=${paramsToHash.storeId}&timeStamp=${paramsToHash.timeStamp}`;
+
+            var formData = new FormData();
+            formData.append('textToEncrypt', query_string);
+            formData.append('merchant_hash', $("#merchant_hash").val());
+
+            var generatedHash = '';
+
+            $.ajax({
+                url: '/home/generate_hash',
+                method: 'POST',
+                processData: false,
+                contentType: false,
+                data: formData,
+                async: false,
+                success: function (response) {
+
+                    if (response && response.Success) {
+                        generatedHash = response.Data.Message;
+
+                        //console.log({ generatedHash });
+
+                        $('#generated-hash').val(generatedHash);
+                    } else {
+                        console.log(response);
+                    }
+                },
+                error: function (jqXHR, textStatus, errorThrown) {
+                    console.error({ jqXHR, textStatus, errorThrown });
+                }
+            });
+
+            return generatedHash;
+        }
+
+    </script>
+
+
+</div>
